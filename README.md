@@ -4,7 +4,7 @@ A Python 3 Webscraping module that gets deals from Blu-ray.com and stores them t
 **Required Modules**: requests, urllib.request, time, beautifulsoup4, collections, mysql.connector, dotenv
 
 **Modules and Usage**:
-get_ideals("URL") takes a deal page URL, returns a dictionary with Title, Thumbnail Link, Blu-ray.com link, vendor link, price, old price
+get_deals("URL") takes a deal page URL, returns a dictionary with Title, Thumbnail Link, Blu-ray.com link, vendor link, price, old price
 
 store_to_db("name", dict):
 requires moviedeals.env to be filled out. Requires MySQL Database (tested with MariaDB) and user with all privileges on said database.
