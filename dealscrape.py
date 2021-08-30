@@ -13,8 +13,8 @@ from dotenv import dotenv_values
 from re import sub
 from decimal import Decimal
 
-def get_deals(url):
-    response = requests.get(url, cookies={"deallink": "bluray"})
+def get_deals(url, country):
+    response = requests.get(url, cookies={"deallink": "bluray", "country": country})
     if(str(response) == "<Response [200]>"):
         soup = BeautifulSoup(response.text, "html.parser")
         
@@ -26,7 +26,10 @@ def get_deals(url):
         if("<a alt=" in str(i) and "blu-ray.com" in str(i) and "select" not in str(i) and "option" not in str(i)):
             name = i.contents[0]["title"]
             link_info = i.contents[0]["href"]
-            thumb = i.contents[0].findAll("img")[0]["src"]
+            try:
+                thumb = i.contents[0].findAll("img")[0]["src"]
+            except:
+                thumb = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Icon-round-Question_mark.svg/200px-Icon-round-Question_mark.svg.png"
             link_buy = i.contents[2].findAll("a")[0]["href"]
             price = i.contents[2].findAll("a")[0].contents[0]
             old_price = i.contents[2].findAll("strike")[0].contents[0]
@@ -41,6 +44,8 @@ def get_deals(url):
     return(items)
                    
 def store_to_db(name, deal_dict):
+    returns = OrderedDict()
+    
     DB_config = dotenv_values("moviedeals.env")
     db = mysql.connector.connect(
         host=DB_config["DB_HOST"],
@@ -71,8 +76,16 @@ def store_to_db(name, deal_dict):
         for i in deal_dict:
             cursor.execute(str("INSERT INTO "+name+" (name, link_info, link_buy, thumb, price, old_price, date_added) VALUES ('"+deal_dict[i]["name"].replace("'", "''")+"', '"+deal_dict[i]["link_info"]+"', '"+deal_dict[i]["link_buy"]+"', '"+deal_dict[i]["thumb"]+"', '"+deal_dict[i]["price"]+"', '"+deal_dict[i]["old_price"]+"', '"+str(int(time.time()))+"')"))
             print(str("Added New Deal: "+deal_dict[i]["name"]))
+            returns[i] = {
+                "name": deal_dict[i]["name"],
+                "link_info": deal_dict[i]["link_info"],
+                "link_buy": deal_dict[i]["link_buy"],
+                "thumb": deal_dict[i]["thumb"],
+                "price": deal_dict[i]["price"],
+                "old_price": deal_dict[i]["old_price"]}
         
         db.commit()
+        return returns
         
     else:
         for i in result:
@@ -81,17 +94,40 @@ def store_to_db(name, deal_dict):
                 print("Deleted Deal (Older 30d): "+i[1])
                 
         for i in deal_dict:
-            if deal_dict[i]["link_info"] in str(result): #Check if deal_dict entry is already in DB
+            cursor.execute(str("SELECT * FROM "+name+" WHERE link_info='"+deal_dict[i]["link_info"]+"'"))
+            comp_res = cursor.fetchall()
+            
+            if(comp_res != []): #Check if deal_dict entry is already in DB
                 cursor.execute(str("SELECT * FROM "+name+" WHERE link_info='"+deal_dict[i]["link_info"]+"' LIMIT 1")) #Grab Entry from DB
                 temp_result = cursor.fetchall()
                 
-                if Decimal(sub(r'[^\d.]', '', deal_dict[i]["price"])) != Decimal(sub(r'[^\d.]', '', temp_result[0][5])): #Check if deal_dict price is lower
-                    cursor.execute(str("DELETE FROM "+name+" WHERE id="+str(temp_result[0][0])))
-                    cursor.execute(str("INSERT INTO "+name+" (name, link_info, link_buy, thumb, price, old_price, date_added) VALUES ('"+deal_dict[i]["name"].replace("'", "''")+"', '"+deal_dict[i]["link_info"]+"', '"+deal_dict[i]["link_buy"]+"', '"+deal_dict[i]["thumb"]+"', '"+deal_dict[i]["price"]+"', '"+deal_dict[i]["old_price"]+"', '"+str(int(time.time()))+"')"))
-                    print("Deal Updated for: "+str(i))
+                try:
+                    if Decimal(sub(r'[^\d.]', '', deal_dict[i]["price"])) != Decimal(sub(r'[^\d.]', '', temp_result[0][5])): #Check if deal_dict price is different
+                        cursor.execute(str("DELETE FROM "+name+" WHERE id="+str(temp_result[0][0])))
+                        cursor.execute(str("INSERT INTO "+name+" (name, link_info, link_buy, thumb, price, old_price, date_added) VALUES ('"+deal_dict[i]["name"].replace("'", "''")+"', '"+deal_dict[i]["link_info"]+"', '"+deal_dict[i]["link_buy"]+"', '"+deal_dict[i]["thumb"]+"', '"+deal_dict[i]["price"]+"', '"+deal_dict[i]["old_price"]+"', '"+str(int(time.time()))+"')"))
+                        print("Deal Updated for: "+str(i))
+                        returns[i] = {
+                            "name": deal_dict[i]["name"],
+                            "link_info": deal_dict[i]["link_info"],
+                            "link_buy": deal_dict[i]["link_buy"],
+                            "thumb": deal_dict[i]["thumb"],
+                            "price": deal_dict[i]["price"],
+                            "old_price": deal_dict[i]["old_price"]}
+                except:
+                    print(str(temp_result))
+                    print("Exception in Price Comparison - Deleting DB Entry")
+                    
                     
             else:
                 cursor.execute(str("INSERT INTO "+name+" (name, link_info, link_buy, thumb, price, old_price, date_added) VALUES ('"+deal_dict[i]["name"].replace("'", "''")+"', '"+deal_dict[i]["link_info"]+"', '"+deal_dict[i]["link_buy"]+"', '"+deal_dict[i]["thumb"]+"', '"+deal_dict[i]["price"]+"', '"+deal_dict[i]["old_price"]+"', '"+str(int(time.time()))+"')"))
                 print("Added New Deal: "+str(i))
+                returns[i] = {
+                    "name": deal_dict[i]["name"],
+                    "link_info": deal_dict[i]["link_info"],
+                    "link_buy": deal_dict[i]["link_buy"],
+                    "thumb": deal_dict[i]["thumb"],
+                    "price": deal_dict[i]["price"],
+                    "old_price": deal_dict[i]["old_price"]}
             
-        db.commit() 
+        db.commit()
+        return returns
