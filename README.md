@@ -21,7 +21,7 @@ import importlib
 
 ds = importlib.import_module("dealscrape")
 
-deals = ds.get_deals("https://www.blu-ray.com/deals/?sortby=time&category=4kbluray&retailerid=1&covers=10")
+deals = ds.get_deals("https://www.blu-ray.com/deals/?sortby=time&category=4kbluray&retailerid=1&covers=10", "us")
 ds.store_to_db("4K_Deals", deals)
 ```
 
