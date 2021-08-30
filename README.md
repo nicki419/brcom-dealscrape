@@ -10,6 +10,9 @@ store_to_db("name", dict):
 requires moviedeals.env to be filled out. Requires MySQL Database (tested with MariaDB) and user with all privileges on said database.
 "name" refers to the table name. Should said table already exist, it'll store the dictionary items in the table. Should it not exist, it will create it first. 
 
+Checks for duplicate entries in the database, and, if found, checks for an updated price to the item. If found, the database entry will be deleted, and the deal added anew.
+Automatically Deletes Entries older than 30 Days from the Database.
+
 copy the .py file in your project's directory, as well as the moviedeals.env file.
 
 example usage: 
@@ -25,10 +28,10 @@ ds.store_to_db("4K_Deals", deals)
 example stdout:
 ```
 Created table '4K_Deals'.
-Insterted 'Shutter Island 4K (Blu-ray)' into Database.
-Insterted 'A Quiet Place Part II 4K (Blu-ray)' into Database.
-Insterted 'Two Evil Eyes 4K (Blu-ray)' into Database.
-Insterted 'Carlito's Way 4K (Blu-ray)' into Database.
+Added New Deal: 'Shutter Island 4K (Blu-ray)
+Added New Deal: 'A Quiet Place Part II 4K (Blu-ray)
+Added New Deal: 'Two Evil Eyes 4K (Blu-ray)
+Added New Deal: 'Carlito's Way 4K (Blu-ray)
 ```
 example database:
 ```
